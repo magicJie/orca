@@ -5,6 +5,7 @@ import TabGroupPanel, { type TabGroupPanelTabStrip } from './TabGroupPanel'
 import type { HoveredTabInsertion } from './useTabDragSplit'
 import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../../../shared/layout-owner-switch'
 import { setGroupRatioThroughLayoutOwner } from './tab-group-layout-owner-commands'
+import { acquireWebviewsDragPassthrough } from '../browser-pane/host-guest/webview-drag-passthrough'
 
 const MIN_RATIO = 0.15
 const MAX_RATIO = 0.85
@@ -51,6 +52,8 @@ export function ResizeHandle({
       onResizeStart()
       setDragging(true)
       handle.setPointerCapture(event.pointerId)
+      // Why: a release over a browser webview never reaches window without passthrough.
+      const releaseWebviewDragPassthrough = acquireWebviewsDragPassthrough()
       // Why: measure outside pointermove so pane writes never force a readback.
       let rect = container.getBoundingClientRect()
       const resizeObserver = new ResizeObserver(() => {
@@ -62,6 +65,11 @@ export function ResizeHandle({
       const onPointerMove = (moveEvent: PointerEvent): void => {
         // Why: Linux Chromium delivers pointermove while hasPointerCapture() reports false; own by pointerId only.
         if (moveEvent.pointerId !== event.pointerId) {
+          return
+        }
+        // Why: a release outside the window can arrive as a buttonless move instead of pointerup.
+        if (moveEvent.buttons === 0) {
+          cleanup()
           return
         }
         const ratio = isHorizontal
@@ -81,6 +89,7 @@ export function ResizeHandle({
         }
         cleaned = true
         resizeObserver.disconnect()
+        releaseWebviewDragPassthrough()
         onResizeEnd?.()
         if (draggedRatio !== null) {
           onRatioChange(draggedRatio)
