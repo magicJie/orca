@@ -21,12 +21,14 @@ export type FeatureTipSeenId = FeatureTipId | (typeof CHAT_UI_HERE_ROLLOUT_SEEN_
 
 type ChatUiLaunchTipCohortSettings = Pick<
   TelemetrySettings,
-  'chatUiLaunchTipCohort' | 'chatUiLaunchTipRolloutCohort'
+  'chatUiLaunchTipCohort' | 'chatUiLaunchTipRolloutCohort' | 'chatUiLaunchTipPriorControl'
 >
 
-/** Profiles the earlier draws held back as controls; the v2 rollout offers them the tip too. */
-export function isChatUiLaunchTipControl(telemetry: ChatUiLaunchTipCohortSettings | undefined) {
-  return (telemetry?.chatUiLaunchTipRolloutCohort ?? telemetry?.chatUiLaunchTipCohort) === 'control'
+/** Controls an earlier build held back; frozen before this build can draw, so later draws never qualify. */
+export function isChatUiLaunchTipPriorControl(
+  telemetry: ChatUiLaunchTipCohortSettings | undefined
+): boolean {
+  return telemetry?.chatUiLaunchTipPriorControl === true
 }
 
 export function getFeatureTipSeenId(
@@ -36,8 +38,9 @@ export function getFeatureTipSeenId(
   if (id !== 'chat-ui-here') {
     return id
   }
-  // Why: suppressing a control already marked the older ids seen, so it needs a fresh one.
-  if (isChatUiLaunchTipControl(telemetry)) {
+  // Why: suppressing a prior control already marked the older ids seen, so its re-offer needs a fresh
+  // id; keyed on the frozen flag so a later cohort promotion cannot reopen a delivered card.
+  if (isChatUiLaunchTipPriorControl(telemetry)) {
     return 'chat-ui-here-rollout-v2'
   }
   return telemetry?.chatUiLaunchTipRolloutCohort ? 'chat-ui-here-rollout-v1' : id

@@ -80,6 +80,32 @@ export class LoadedCohortMigrationOperations {
     return { version: 1, membership: 'eligible', basis: chatUiOn ? 'chat-ui-on' : 'chat-ui-off' }
   }
 
+  /**
+   * Freezes, before this launch can draw a cohort, whether an earlier build already held this eligible
+   * existing profile back as a control. Cohort fields carry no assignment time, so this is the only proof.
+   */
+  freezeChatUiLaunchTipPriorControl(
+    state: PersistedState,
+    audience: ChatUiLaunchTipAudience
+  ): PersistedState {
+    const telemetry = state.settings?.telemetry
+    if (!telemetry || typeof telemetry.chatUiLaunchTipPriorControl === 'boolean') {
+      return state
+    }
+    const cohort = telemetry.chatUiLaunchTipRolloutCohort ?? telemetry.chatUiLaunchTipCohort
+    this.runtime.loadNeedsSave = true
+    return {
+      ...state,
+      settings: {
+        ...state.settings,
+        telemetry: {
+          ...telemetry,
+          chatUiLaunchTipPriorControl: audience.membership === 'eligible' && cohort === 'control'
+        }
+      }
+    }
+  }
+
   /** Runs with the audience capture that first records the profile, so it applies once and in the same save. */
   carryChatUiChoices(
     state: PersistedState,

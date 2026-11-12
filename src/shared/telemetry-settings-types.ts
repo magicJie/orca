@@ -29,6 +29,11 @@ export type TelemetrySettings = {
   /** Treatment cards split equally by eligibility; frozen locally from settings, never usage history. */
   chatUiLaunchTipButtonEmphasis?: 'normal' | 'swapped'
   chatUiLaunchTipTargeting?: ChatUiLaunchTipTargeting
+  /**
+   * Frozen on the first load by a build with the control re-offer: true only when an earlier build had
+   * already assigned the control arm to an eligible existing profile. Never set by later draws.
+   */
+  chatUiLaunchTipPriorControl?: boolean
   /** Local UTC-day cursors cap dashboard observations across restarts; at most two writes a day. */
   agentDashboardActiveDays?: Partial<Record<AgentDashboardSurface, number>>
   /** UTC-day cursors written only after the SDK accepted the milestone capture; at most two writes a day. */

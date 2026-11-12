@@ -1,7 +1,7 @@
 import {
   getCompletedFeatureTipIds,
   getOrderedUnseenFeatureTips,
-  isChatUiLaunchTipControl,
+  isChatUiLaunchTipPriorControl,
   type FeatureTip,
   type FeatureTipId,
   type FeatureTipSeenId
@@ -58,9 +58,9 @@ export function getPendingFeatureTips(args: {
       chatUiLaunchTipCompleted:
         args.webClient ||
         args.chatUiLaunchTipVariant === 'none' ||
-        // Why: controls on Chat UI at launch who are on the terminal now switched back, so they stay out.
+        // Why: prior controls on Chat UI at launch who are on the terminal now switched back, so they stay out.
         (args.chatUiLaunchTipVariant === 'chat-ui-on' &&
-          isChatUiLaunchTipControl(args.settings?.telemetry)),
+          isChatUiLaunchTipPriorControl(args.settings?.telemetry)),
       featureInteractions: args.featureInteractions
     })
   })

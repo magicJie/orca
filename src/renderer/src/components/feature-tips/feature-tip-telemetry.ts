@@ -1,5 +1,5 @@
 import { normalizeAgentDefaultSurface } from '../../../../shared/native-chat/native-chat-providers'
-import { isChatUiLaunchTipControl } from '../../../../shared/feature-tips'
+import { isChatUiLaunchTipPriorControl } from '../../../../shared/feature-tips'
 import { track } from '@/diagnostics/telemetry/telemetry'
 import type { EventProps } from '../../../../shared/telemetry-events'
 import type { ChatUiLaunchTipVariant } from '../../../../shared/native-chat/chat-ui-launch-tip-audience'
@@ -71,14 +71,25 @@ export function trackChatUiFeatureTipAction(
   }
 }
 
-/** Treatment arms show unless targeting found the profile on Chat UI; everyone else shows unless on Chat UI now. */
+/**
+ * Only two groups are admitted: controls an earlier build held back (unless on Chat UI now) and treatment
+ * arms (unless targeting found them on Chat UI). Unassigned, unknown and newly drawn controls fail closed.
+ */
 export function shouldSuppressAutomaticChatUiLaunchTip(
   settings: Pick<GlobalSettings, 'telemetry' | 'agentDefaultSurface'> | null
 ): boolean {
   const telemetry = settings?.telemetry
-  const cohort = telemetry?.chatUiLaunchTipRolloutCohort ?? telemetry?.chatUiLaunchTipCohort
-  if (!cohort || isChatUiLaunchTipControl(telemetry)) {
+  if (isChatUiLaunchTipPriorControl(telemetry)) {
     return normalizeAgentDefaultSurface(settings?.agentDefaultSurface) === 'chat'
+  }
+  const cohort = telemetry?.chatUiLaunchTipRolloutCohort ?? telemetry?.chatUiLaunchTipCohort
+  if (
+    cohort !== 'treatment' &&
+    cohort !== 'treatment-live-switch' &&
+    cohort !== 'treatment-swapped-buttons' &&
+    cohort !== 'treatment-center'
+  ) {
+    return true
   }
   const targeting = telemetry?.chatUiLaunchTipTargeting
   return (

@@ -280,7 +280,10 @@ export class LoadedStateParsingOperations {
     const migrated = {
       ...this.cohorts.carryChatUiChoices(
         this.cohorts.keepResumeOnRestartOffForExistingProfiles(
-          this.cohorts.migrateTelemetry(current, fileExistedOnLoad),
+          this.cohorts.freezeChatUiLaunchTipPriorControl(
+            this.cohorts.migrateTelemetry(current, fileExistedOnLoad),
+            audience
+          ),
           parsed
         ),
         parsed,

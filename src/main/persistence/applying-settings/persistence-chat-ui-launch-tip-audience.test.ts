@@ -106,3 +106,45 @@ it('preserves separate rollout completion through stale client writes and reload
     restoreConsentEnv(env)
   }
 })
+
+const EXISTING_TELEMETRY = {
+  optedIn: true,
+  installId: 'install',
+  existedBeforeTelemetryRelease: true
+} as const
+
+it('re-offers only controls an earlier build assigned, never one this launch draws', async () => {
+  const env = stashAndClearConsentEnv()
+  try {
+    writeDataFile({
+      settings: {
+        experimentalNativeChat: false,
+        telemetry: { ...EXISTING_TELEMETRY, chatUiLaunchTipRolloutCohort: 'control' }
+      }
+    })
+    expect(createStore().getSettings().telemetry?.chatUiLaunchTipPriorControl).toBe(true)
+    await closeTestStores()
+
+    writeDataFile({ settings: { experimentalNativeChat: false, telemetry: EXISTING_TELEMETRY } })
+    const unassigned = createStore()
+    expect(unassigned.getSettings().telemetry?.chatUiLaunchTipPriorControl).toBe(false)
+    vi.mocked(crypto.randomInt).mockImplementationOnce(() => 0)
+    expect(ensureChatUiLaunchTipCohort(unassigned)).toBe('control')
+    unassigned.flushOrThrow()
+    await closeTestStores()
+    expect(createStore().getSettings().telemetry).toMatchObject({
+      chatUiLaunchTipRolloutCohort: 'control',
+      chatUiLaunchTipPriorControl: false
+    })
+  } finally {
+    restoreConsentEnv(env)
+  }
+})
+
+it('never treats a new profile that inherited a control cohort as a prior control', () => {
+  writeDataFile({
+    chatUiLaunchTipAudience: { version: 1, membership: 'excluded', basis: 'new-profile' },
+    settings: { telemetry: { ...EXISTING_TELEMETRY, chatUiLaunchTipCohort: 'control' } }
+  })
+  expect(createStore().getSettings().telemetry?.chatUiLaunchTipPriorControl).toBe(false)
+})
