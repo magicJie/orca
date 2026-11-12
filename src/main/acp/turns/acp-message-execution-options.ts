@@ -19,7 +19,7 @@ export async function applyAcpMessageOptions(
   session: AcpStructuredSession,
   options: AgentSessionExecutionOptions | undefined,
   setOption: (
-    key: 'interactionMode' | 'model' | 'effort' | 'fastMode',
+    key: 'interactionMode' | 'model' | 'effort' | 'fastMode' | 'serviceTier',
     value: string
   ) => Promise<unknown>,
   isCurrent: () => boolean,
@@ -30,14 +30,14 @@ export async function applyAcpMessageOptions(
   if (!options) {
     return true
   }
-  for (const key of ['interactionMode', 'model', 'effort', 'fastMode'] as const) {
+  for (const key of ['interactionMode', 'model', 'effort', 'fastMode', 'serviceTier'] as const) {
     const value = options[key]
     if (
       value === undefined ||
       (key === 'interactionMode'
         ? !session.options.needsInteractionMode(value)
         : session.options.appliedInput.get(key) === value ||
-          (key === 'fastMode'
+          (key === 'fastMode' || key === 'serviceTier'
             ? !session.options.write(key, value)
             : session.options.matchesNativeRestoredOption(key, value) ||
               (key === 'effort' && !session.options.offersEffort(value))))

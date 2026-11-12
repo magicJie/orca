@@ -1,3 +1,4 @@
+import type { AgentSessionGenerationUsage } from '../../../shared/agent-session/agent-session-generation-usage'
 import type { AgentSessionAccountKind } from '../../../shared/agent-session/failures/agent-session-availability'
 import type { AgentSessionContextUsage } from '../../../shared/agent-session/conversation-context/agent-session-context-usage'
 import type { AgentSessionUsageLimit } from '../../../shared/agent-session/failures/agent-session-usage-limit'
@@ -104,6 +105,7 @@ export type AcpDialectNotification =
       /** Replaces the update that reported it. */
       failure?: Pick<AcpTurnEnding, 'stopReason' | 'failureDetail' | 'usageLimit' | 'notSignedIn'>
       usage?: AgentSessionContextUsage
+      generationUsage?: AgentSessionGenerationUsage
       backgroundTasks?: AcpBackgroundTaskUpdate[]
       subagents?: AcpSubagentUpdate[]
       child?: AcpChildSessionReport
@@ -185,6 +187,7 @@ export type AcpDialect = {
   familyEfforts?(family: string, models: readonly ModelInfo[]): AcpAdvertisedEfforts | undefined
   /** Native thinking choices remain valid across models; the agent clamps unsupported levels. */
   clampsUnlistedEffort?: true
+  serviceTierCommand?: (value: string) => string
   /** Opt-in because advertising forms changes agent behaviour; requests use the generic handlers. */
   clientCapabilities?: Pick<ClientCapabilities, 'elicitation' | '_meta'>
   /** Requests that name no session; they belong to the chat's own. */

@@ -50,6 +50,12 @@ import { usesModelSpecificAcpEfforts } from '../../../shared/agent-session/optio
 
 type AcpListingConnect<C> = (launch: ProviderProcessLaunch, options: AcpAgentConnectionOptions) => C
 
+import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/native-chat-visuals-skill-location'
+import {
+  readOmpNativeChatOptions,
+  withOmpServiceTiers,
+  type OmpNativeChatOptions
+} from '../../omp/omp-native-chat-options'
 export type AcpModelCatalogProbeDeps = AcpLaunchInvocationDeps & {
   resolveSavedEnvironment?: () => Promise<Record<string, string>>
   probeVersion?: AgentCliVersionReader
@@ -132,9 +138,16 @@ export function createAcpModelCatalogProbe(
         if (listing === null) {
           throw new Error(`${spec.agent} at ${command} lists its models only through its chats`)
         }
+        const pluginDir =
+          spec.agent === 'omp'
+            ? ((await resolveNativeChatVisualsSkillLocation())?.pluginDir ?? null)
+            : null
         const launch = {
           command,
-          args: [...prefixArgs, ...spec.args({ fullAccess: false, pluginDirs: [] })],
+          args: [
+            ...prefixArgs,
+            ...spec.args({ fullAccess: false, pluginDirs: pluginDir ? [pluginDir] : [] })
+          ],
           cwd,
           env,
           envToDelete
@@ -174,21 +187,33 @@ export function createAcpModelCatalogProbe(
                 : null
             const sessionCwd = listing.inPrivateFolder && folder ? folder.path : workspace
             const started: string[] = []
+            let tierReport: OmpNativeChatOptions | undefined
             try {
               assertStructuredAgentResolutionCurrent(operation)
               const args = [
                 ...prefixArgs,
-                ...spec.args({ fullAccess: false, pluginDirs: [], model }),
+                ...spec.args({
+                  fullAccess: false,
+                  pluginDirs: pluginDir ? [pluginDir] : [],
+                  model
+                }),
+
                 ...(folderArgs && folder ? folderArgs(folder.path) : [])
               ]
-              return await runAgentModelCatalogSession<
+              const result = await runAgentModelCatalogSession<
                 AcpModelCatalogSessionConnection,
                 Awaited<ReturnType<typeof readSessionModels>>
               >(
                 () =>
                   (deps.connectSession ?? createAcpAgentConnection)(
                     { ...launch, args },
-                    connectionOptions
+                    {
+                      ...connectionOptions,
+                      onExtensionNotification: (method, params) => {
+                        tierReport = readOmpNativeChatOptions(method, params) ?? tierReport
+                      }
+                    }
+
                   ),
                 (connection, ready) =>
                   readSessionModels(
@@ -225,6 +250,7 @@ export function createAcpModelCatalogProbe(
                   ),
                 run
               )
+              return { ...result, models: withOmpServiceTiers(result.models, tierReport) }
             } finally {
               // The session's process has exited, so its files are no longer written.
               const accountHomePath = agentSessionAccountHomePath(accountHome)

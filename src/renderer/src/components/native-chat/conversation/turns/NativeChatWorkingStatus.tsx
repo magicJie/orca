@@ -51,6 +51,7 @@ export function NativeChatWorkingStatus({
   startedAt,
   workedSeconds,
   verdict,
+  tokensPerSecond,
   expanded = false,
   onToggleExpanded,
   actions
@@ -60,6 +61,7 @@ export function NativeChatWorkingStatus({
   startedAt: number | null
   workedSeconds?: number | null
   verdict?: AgentTurnOutcome
+  tokensPerSecond?: number | null
   expanded?: boolean
   onToggleExpanded?: () => void
   /** Controls at the line's end; the rule under the status spans them too. */
@@ -76,7 +78,8 @@ export function NativeChatWorkingStatus({
     elapsedSeconds,
     verdict
   })
-  const label = pendingLabel ?? turnStatusLabel(key, duration, t)
+  const rate = tokensPerSecond == null ? '' : ` · ${tokensPerSecond.toFixed(1)} tok/s`
+  const label = (pendingLabel ?? turnStatusLabel(key, duration, t)) + rate
   const detailsLabel = t(
     'components.native-chat.status.toggleDetails',
     NATIVE_CHAT_TURN_STATUS_COPY.toggleDetails
@@ -120,7 +123,7 @@ export function NativeChatWorkingStatus({
           className,
           'w-full text-left hover:text-chat-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
         )}
-        aria-label={bot ? `${bot.name}, ${label}, ${detailsLabel}` : detailsLabel}
+        aria-label={bot ? `${bot.name}, ${label}, ${detailsLabel}` : `${detailsLabel}: ${label}`}
         aria-expanded={expanded}
         onClick={onToggleExpanded}
       >

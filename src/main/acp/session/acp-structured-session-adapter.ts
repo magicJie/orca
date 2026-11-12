@@ -29,7 +29,11 @@ import {
   applyAcpLivePermissionMode
 } from '../options/acp-live-permission-mode'
 import { acpControlsSettled, writeAcpSessionOption } from '../options/acp-session-option-write'
-import { acpOptionWriteBound, withAcpModelFallback } from '../turns/acp-model-command'
+import {
+  acpOptionWriteBound,
+  acpWithdrawnSteer,
+  withAcpModelFallback
+} from '../turns/acp-model-command'
 import {
   acpChildStopCapabilities,
   closeAcpChildSessions,
@@ -125,7 +129,12 @@ export class AcpStructuredSessionAdapter implements SessionAdapter {
       const optionsApplied = await applyAcpMessageOptions(
         session,
         input.executionOptions,
-        (key, value) => this.setOption({ sessionId, fence, key, value, signal }),
+        (key, value) => {
+          if (session.options.write(key, value)?.method === 'command') {
+            fallback.hold()
+          }
+          return this.setOption({ sessionId, fence, key, value, signal })
+        },
         () =>
           this.children.sessions.get(input.sessionId) === session && session.journalClosed === null,
         signal,
@@ -220,6 +229,14 @@ export class AcpStructuredSessionAdapter implements SessionAdapter {
       )
     }
     session.options.notePick(input.key)
+    if (write.method === 'command' && session.turns.running) {
+      const epoch = session.turns.withdrawalEpoch
+      await session.turns.whenIdle(input.signal)
+      const withdrawn = session.turns.withdrawnSince(epoch)
+      if (withdrawn) {
+        throw acpWithdrawnSteer(session.spec.agent, withdrawn === 'ended')
+      }
+    }
     // Bound option writes so they cannot hold the session queue indefinitely.
     const bound = { ...this.writeBound(session, input.signal), key: input.key, value: input.value }
     await writeAcpSessionOption(session.connection, session.options, write, bound)

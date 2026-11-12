@@ -100,6 +100,7 @@ export function decideProviderTimelineEvent(
     case 'request.subject':
       return decideRequestSubject(input, event)
     case 'context.usage':
+    case 'generation.usage':
       return decideContextUsage(input, event)
     case 'provider.frame':
       return decideFrame(input, event)
