@@ -11,7 +11,7 @@ import type {
 import {
   loneFastTier,
   speedButtonTiers
-} from '../../../../../src/shared/native-chat/input/native-chat-session-speed-tiers'
+} from '../../../../../../src/shared/native-chat/input/session-options/native-chat-session-speed-tiers'
 import {
   MobileNativeChatSessionOptionPickers,
   type MobileNativeChatPickerPresentation
@@ -195,6 +195,8 @@ describe('MobileNativeChatSessionOptionPickers', () => {
     mount([MODEL_DESCRIPTOR, effort], false, 'effort')
     await act(async () => rowByText('Low').props.onPress())
     expect(setOption).toHaveBeenCalledExactlyOnceWith('effort', 'low')
+  })
+
   it('keeps OMP native None and literal Default distinct in speed pickers and summary pills', async () => {
     const ompOpenAiSpeed: SessionOptionDescriptor = {
       id: 'serviceTier',

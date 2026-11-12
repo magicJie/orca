@@ -48,6 +48,7 @@ import {
 import { linkedSkillsSection } from '../../native-chat/native-chat-skill-roots'
 import { acpLaunchInstructions, type AcpInstructionsLaunch } from './acp-instructions'
 import { withoutCallerIdentity } from '../../runtime/agent-session/environment/structured-session-child-env'
+import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/conversation-files/native-chat-visuals-skill-location'
 
 /** The environment a launch's process gets; see `AcpLaunchSpec.sharedToolProcess`. */
 export function acpProcessEnvironment(
@@ -57,7 +58,6 @@ export function acpProcessEnvironment(
     ? withoutCallerIdentity(launch.env, launch.envToDelete)
     : { env: launch.env, envToDelete: launch.envToDelete }
 }
-import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/conversation-files/native-chat-visuals-skill-location'
 
 export type AcpStructuredLaunch = StructuredAgentCommand & {
   spec: AcpLaunchSpec

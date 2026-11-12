@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { effectiveServiceTier } from './structured-agent-session-effective-tier'
+import { effectiveServiceTier } from './reconciliation/structured-agent-session-effective-tier'
 import {
   applyStructuredAgentSessionOptions,
   createStructuredAgentSessionOptionState
@@ -7,7 +7,7 @@ import {
 import {
   canSetStructuredAgentSessionOption,
   structuredAgentSessionOptionSnapshot
-} from './structured-agent-session-option-snapshot'
+} from './view/structured-agent-session-option-snapshot'
 
 const choices = [
   { value: 'none', label: 'None' },

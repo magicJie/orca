@@ -5,6 +5,7 @@ import {
   closeProviderTimelineRigs,
   openProviderTimelineRig
 } from '../../native-chat/agent-session-timeline/provider-timeline-assembler-test-support'
+import { readTestJournalItems } from '../../native-chat/agent-session-journal/journal-observation.test-support'
 import { selectStructuredAgentSettledTurns } from '../../../shared/agent-session/view/structured-agent-session-turn-timing'
 
 afterEach(closeProviderTimelineRigs)
@@ -30,7 +31,7 @@ it('retains provider-token throughput across settlement and reload without count
   expect([...before.values()][0]?.tokensPerSecond).toBe(42)
 
   const reopened = await rig.reopenJournal()
-  const restored = selectStructuredAgentSettledTurns(reopened.snapshot().items)
+  const restored = selectStructuredAgentSettledTurns(await readTestJournalItems(reopened))
   expect([...restored.values()][0]?.tokensPerSecond).toBe(42)
 })
 

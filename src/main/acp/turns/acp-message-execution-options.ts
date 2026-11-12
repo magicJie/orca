@@ -37,10 +37,11 @@ export async function applyAcpMessageOptions(
       (key === 'interactionMode'
         ? !session.options.needsInteractionMode(value)
         : session.options.appliedInput.get(key) === value ||
-          (key === 'fastMode' || key === 'serviceTier'
+          (key === 'fastMode'
             ? !session.options.write(key, value)
-            : session.options.matchesNativeRestoredOption(key, value) ||
-              (key === 'effort' && !session.options.offersEffort(value))))
+            : (key !== 'serviceTier' && session.options.matchesNativeRestoredOption(key, value)) ||
+              (key === 'effort' && !session.options.offersEffort(value)) ||
+              (key === 'serviceTier' && !session.options.write(key, value))))
     ) {
       continue
     }

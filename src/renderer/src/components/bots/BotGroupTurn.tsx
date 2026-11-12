@@ -23,6 +23,7 @@ import { botFallback } from '../../../../shared/bots/bot-avatar-fallback'
 import type { BotGroupTurn as Turn } from '../../../../shared/bots/bot-group'
 import type { BotGroupSession } from './BotGroupSessionReader'
 import type { NativeChatTurnStatus } from '../../../../shared/native-chat/transcript/turns/native-chat-turn-status'
+import { agentSessionTokensPerSecond } from '../../../../shared/agent-session/agent-session-generation-usage'
 
 import { BotGroupTranscriptOwner, type useBotGroupFileContexts } from './BotGroupTranscriptOwner'
 import { useNativeChatFileLinkClick } from '../native-chat/links/actions/use-native-chat-file-link-click'
@@ -101,9 +102,13 @@ export const BotGroupTurn = memo(function BotGroupTurn({
                 ? lifecycle.completedAt - lifecycle.startedAt
                 : 0)) / 1000
           : null,
-      verdict: lifecycle?.outcome
+      verdict: lifecycle?.outcome,
+      tokensPerSecond:
+        turn.revoked && lifecycle?.state !== 'completed'
+          ? null
+          : agentSessionTokensPerSecond(lifecycle?.generationUsage)
     }),
-    [lifecycle]
+    [lifecycle, turn.revoked]
   )
   const projection = useMemo(() => desktopStructuredTranscript.transcript(items), [items])
   const project = useMemo(() => createNativeChatMessageListProjection(), [])

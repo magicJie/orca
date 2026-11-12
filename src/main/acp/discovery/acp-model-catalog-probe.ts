@@ -25,7 +25,6 @@ import {
   type AcpAgentConnectionOptions
 } from '../process/acp-agent-connection'
 import { acpClientInfo } from '../launch/acp-client-info'
-import { acpRunFolder } from '../launch/acp-private-temp'
 import {
   acpListingDependsOnRelease,
   acpListingNeedsChatFolder,
@@ -34,16 +33,15 @@ import {
 import type { AcpLaunchSpec } from '../launch/acp-launch-contract'
 import { checkAcpLaunchVersion } from '../launch/acp-launch-version'
 import { acpLaunchSpecForAccount } from '../launch/acp-launch-command'
-import { agentSessionAccountHomePath } from '../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import {
   resolveAcpLaunchInvocation,
   type AcpLaunchInvocationDeps
 } from '../launch/acp-structured-launch-resolution'
-import {
-  readSessionModels,
-  type AcpModelCatalogConnection,
-  type AcpModelCatalogSessionConnection
+import type {
+  AcpModelCatalogConnection,
+  AcpModelCatalogSessionConnection
 } from './acp-listing-session-models'
+import { acpSessionModelListing } from './acp-model-catalog-session-listing'
 import { AcpAgentError, AcpAgentExitedError } from '../transport/acp-errors'
 import { AgentModelCatalogUnavailableError } from '../../native-chat/agent-model-catalog/agent-model-catalog-unavailable'
 import { usesModelSpecificAcpEfforts } from '../../../shared/agent-session/options/model-catalog/agent-model-catalog-ownership'
@@ -51,11 +49,7 @@ import { usesModelSpecificAcpEfforts } from '../../../shared/agent-session/optio
 type AcpListingConnect<C> = (launch: ProviderProcessLaunch, options: AcpAgentConnectionOptions) => C
 
 import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/conversation-files/native-chat-visuals-skill-location'
-import {
-  readOmpNativeChatOptions,
-  withOmpServiceTiers,
-  type OmpNativeChatOptions
-} from '../../omp/omp-native-chat-options'
+
 export type AcpModelCatalogProbeDeps = AcpLaunchInvocationDeps & {
   resolveSavedEnvironment?: () => Promise<Record<string, string>>
   probeVersion?: AgentCliVersionReader
@@ -142,6 +136,7 @@ export function createAcpModelCatalogProbe(
           spec.agent === 'omp'
             ? ((await resolveNativeChatVisualsSkillLocation())?.pluginDir ?? null)
             : null
+        const extensionPath = pluginDir ? join(pluginDir, 'omp-native-chat.mjs') : undefined
         const launch = {
           command,
           args: [
@@ -178,97 +173,22 @@ export function createAcpModelCatalogProbe(
           if (!workspace && !listing.inPrivateFolder) {
             throw folderlessListing(spec)
           }
-          // Remove disposable session storage after the process closes.
-          const folderArgs = listing.sessionFolderArgs
-          const listInSession = async (model: string | undefined) => {
-            const folder =
-              folderArgs || listing.inPrivateFolder
-                ? await acpRunFolder(join(deps.dataDirectory, 'acp-listing-sessions', spec.agent))
-                : null
-            const sessionCwd = listing.inPrivateFolder && folder ? folder.path : workspace
-            const started: string[] = []
-            let tierReport: OmpNativeChatOptions | undefined
-            try {
-              assertStructuredAgentResolutionCurrent(operation)
-              const args = [
-                ...prefixArgs,
-                ...spec.args({
-                  fullAccess: false,
-                  pluginDirs: pluginDir ? [pluginDir] : [],
-                  model
-                }),
-
-                ...(folderArgs && folder ? folderArgs(folder.path) : [])
-              ]
-              const result = await runAgentModelCatalogSession<
-                AcpModelCatalogSessionConnection,
-                Awaited<ReturnType<typeof readSessionModels>>
-              >(
-                () =>
-                  (deps.connectSession ?? createAcpAgentConnection)(
-                    { ...launch, args },
-                    {
-                      ...connectionOptions,
-                      onExtensionNotification: (method, params) => {
-                        tierReport = readOmpNativeChatOptions(method, params) ?? tierReport
-                      }
-                    }
-
-                  ),
-                (connection, ready) =>
-                  readSessionModels(
-                    spec,
-                    listing,
-                    connection,
-                    sessionCwd,
-                    operation,
-                    options?.selectedModels,
-                    model,
-                    spec.dialect.effortChangesModel ? ready : undefined,
-                    (result) =>
-                      publish?.(
-                        {
-                          ...result,
-                          models: [...result.models],
-                          attemptedModels: [...result.attemptedModels],
-                          origin: 'probe',
-                          complete: false
-                        },
-                        true
-                      ),
-                    publish?.defer && publish.demanded
-                      ? {
-                          defer: (read, known) =>
-                            publish.defer?.(
-                              () => ({ ...read(), origin: 'probe', complete: false }),
-                              known
-                            ),
-                          demanded: publish.demanded
-                        }
-                      : undefined,
-                    (sessionId) => started.push(sessionId)
-                  ),
-                run
-              )
-              return { ...result, models: withOmpServiceTiers(result.models, tierReport) }
-            } finally {
-              // The session's process has exited, so its files are no longer written.
-              const accountHomePath = agentSessionAccountHomePath(accountHome)
-              if (accountHomePath) {
-                for (const sessionId of started) {
-                  await listing
-                    .discardSession?.({ sessionId, cwd: sessionCwd, accountHomePath })
-                    .catch((error: unknown) => {
-                      console.warn(
-                        `[acp-model-catalog] ${spec.agent} kept a listing session:`,
-                        error
-                      )
-                    })
-                }
-              }
-              await folder?.remove()
-            }
-          }
+          const listInSession = acpSessionModelListing({
+            spec,
+            listing,
+            deps,
+            launch,
+            prefixArgs,
+            workspace,
+            accountHome,
+            pluginDirs: pluginDir ? [pluginDir] : [],
+            extensionPath,
+            connectionOptions,
+            operation,
+            selectedModels: options?.selectedModels,
+            publish,
+            run
+          })
           let result: Awaited<ReturnType<typeof listInSession>>
           try {
             result = await listInSession(launchedModel)
