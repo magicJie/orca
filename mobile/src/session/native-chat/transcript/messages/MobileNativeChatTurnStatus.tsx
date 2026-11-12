@@ -28,6 +28,7 @@ export function MobileNativeChatTurnStatus({
   startedAt,
   workedSeconds,
   verdict,
+  tokensPerSecond,
   expanded = false,
   onToggleExpanded
 }: {
@@ -35,6 +36,7 @@ export function MobileNativeChatTurnStatus({
   startedAt: number | null
   workedSeconds?: number | null
   verdict?: AgentTurnOutcome
+  tokensPerSecond?: number | null
   expanded?: boolean
   onToggleExpanded?: () => void
 }): React.JSX.Element {
@@ -43,9 +45,10 @@ export function MobileNativeChatTurnStatus({
   const bot = useContext(MobileNativeChatBotIdentityContext)
   const settled = workedSeconds != null || Boolean(pendingLabel)
   const elapsedSeconds = useElapsedSeconds(startedAt, !settled)
+  const rate = tokensPerSecond == null ? '' : ` · ${tokensPerSecond.toFixed(1)} tok/s`
   const label =
-    pendingLabel ??
-    formatMobileNativeChatTurnStatusLabel({ workedSeconds, elapsedSeconds, verdict }, t)
+    (pendingLabel ??
+      formatMobileNativeChatTurnStatusLabel({ workedSeconds, elapsedSeconds, verdict }, t)) + rate
 
   const identity = bot ? (
     <View accessibilityRole="image" accessibilityLabel={bot.name}>
@@ -64,7 +67,7 @@ export function MobileNativeChatTurnStatus({
         accessibilityLabel={
           bot
             ? `${bot.name}, ${label}, ${nativeChatTurnStatusCopy(t).toggleDetails}`
-            : nativeChatTurnStatusCopy(t).toggleDetails
+            : `${nativeChatTurnStatusCopy(t).toggleDetails}: ${label}`
         }
       >
         {identity}

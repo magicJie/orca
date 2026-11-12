@@ -34,6 +34,8 @@ import { reportsAcpOptions, routeAcpSessionEvent } from '../timeline/acp-session
 import type { AcpStructuredSessionAdapterDeps } from './acp-structured-session-adapter-deps'
 import type { AcpStructuredTurnsDeps } from '../turns/acp-turn-dispatch-contract'
 import { createStructuredAgentSessionLogger } from '../../native-chat/agent-session-wire/host/structured-agent-session-logger'
+import { readOmpNativeChatOptions } from '../../omp/omp-native-chat-options'
+import { reportAcpSessionOptions } from '../options/acp-live-options'
 
 const MAX_EARLY_FRAMES = 2_048
 
@@ -113,6 +115,14 @@ export async function acquireAcpStructuredSession(input: {
       onRequest: (method, params, context) => prompts.handle(method, params, context),
       onExtensionNotification: (method, params) =>
         whenLane(() => {
+          const report = spec.agent === 'omp' ? readOmpNativeChatOptions(method, params) : undefined
+          if (report) {
+            options.adoptServiceTiers(report)
+            if (isAcpReadySession(session) && !session.ended) {
+              reportAcpSessionOptions(deps.onEvent, session)
+            }
+            return
+          }
           if (slot.reattaching) {
             slot.history?.keep(method, params)
           }
@@ -173,14 +183,7 @@ export async function acquireAcpStructuredSession(input: {
         event.kind === 'known' &&
         reportsAcpOptions(event.notification.update)
       ) {
-        deps.onEvent?.({
-          type: 'options-reported',
-          sessionId,
-          fence: acquire.fence,
-          acquisitionGeneration: generation,
-          reportedOptions: options.observedCurrent(launchPermission.permissionModes),
-          catalogListing: { models: options.read().models }
-        })
+        reportAcpSessionOptions(deps.onEvent, session)
       }
     })
   )

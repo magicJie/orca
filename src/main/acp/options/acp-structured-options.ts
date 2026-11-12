@@ -19,16 +19,14 @@ import type {
   SessionConfigOption,
   SessionModelState
 } from '../generated/acp-protocol.generated'
+import * as Omp from '../../omp/omp-native-chat-options'
 
 type SelectOption = Extract<SessionConfigOption, { type: 'select' }>
 
 export type AcpOptionWrite =
   | { method: 'config'; configId: string; value: string }
   | { method: 'model'; modelId: string }
-
-function isSelect(option: SessionConfigOption): option is SelectOption {
-  return option.type === 'select'
-}
+  | { method: 'command'; text: string }
 
 export class AcpStructuredOptions {
   constructor(
@@ -45,6 +43,7 @@ export class AcpStructuredOptions {
       | 'fastConfigId'
       | 'thinkingConfigId'
       | 'interactionModes'
+      | 'serviceTierCommand'
     > = {}
   ) {}
 
@@ -52,6 +51,7 @@ export class AcpStructuredOptions {
   /** As the agent last reported them; replace through `adoptConfigOptions`. */
   configOptions: SessionConfigOption[] = []
   private models: SessionModelState | null = null
+  private serviceTiers?: Omp.OmpNativeChatOptions
   private commands: AgentSessionSlashCommand[] | undefined
   private reportedCommands: readonly AvailableCommand[] | undefined
   private isBuiltin: (command: AvailableCommand) => boolean = () => false
@@ -169,6 +169,7 @@ export class AcpStructuredOptions {
         this.unobservedCurrent.delete('effort')
       }
     }
+    this.appliedInput.delete('serviceTier')
     const proof = this.selectorProof
     if (!proof || this.writing > 0) {
       return
@@ -182,6 +183,11 @@ export class AcpStructuredOptions {
       this.appliedInput.delete('model')
       this.appliedInput.delete('effort')
     }
+  }
+
+  adoptServiceTiers(report: Omp.OmpNativeChatOptions): void {
+    this.appliedInput.delete('serviceTier')
+    this.serviceTiers = report
   }
 
   adoptModel(modelId: string): void {
@@ -246,7 +252,14 @@ export class AcpStructuredOptions {
       const native = acpInteractionModeValue(this.dialect.interactionModes, option, value)
       return option && native ? { method: 'config', configId: option.id, value: native } : null
     }
-    return null
+    return key === 'serviceTier'
+      ? Omp.ompServiceTierWrite(
+          this.serviceTiers,
+          this.currentValues().model,
+          value,
+          this.dialect.serviceTierCommand
+        )
+      : null
   }
 
   /** Unrunnable Plan is refused, unrunnable Build skipped; only Orca's confirmed write proves the mode. */
@@ -273,15 +286,15 @@ export class AcpStructuredOptions {
       state: this.models,
       currentModel
     })
-    const confirmed = [...(currentModel ? ['model'] : []), ...(effortOption ? ['effort'] : [])]
+    const current = {
+      ...(currentModel ? { model: currentModel } : {}),
+      ...(effortOption ? { effort: effortOption.currentValue } : {}),
+      ...Omp.currentOmpServiceTier(this.serviceTiers, currentModel)
+    }
     const menu = {
-      models,
+      models: Omp.withOmpServiceTiers(models, this.serviceTiers),
       forkSupport: this.forkSupport,
-      current: {
-        ...(currentModel ? { model: currentModel } : {}),
-        ...(effortOption ? { effort: effortOption.currentValue } : {}),
-        confirmed
-      }
+      current: { ...current, confirmed: Object.keys(current) }
     }
     return withFastModeOption(menu, this.idSelect(this.dialect.fastConfigId))
   }
@@ -305,7 +318,8 @@ export class AcpStructuredOptions {
     const { current } = this.read()
     return {
       ...(current.model ? { model: current.model } : {}),
-      ...(current.effort ? { effort: current.effort } : {})
+      ...(current.effort ? { effort: current.effort } : {}),
+      ...(current.serviceTier ? { serviceTier: current.serviceTier } : {})
     }
   }
 
@@ -351,6 +365,6 @@ export class AcpStructuredOptions {
     const option = this.configOptions.find(
       (entry) => entry.category === category || (category === 'model' && entry.id === 'model')
     )
-    return option && isSelect(option) ? option : null
+    return option?.type === 'select' ? option : null
   }
 }

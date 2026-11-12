@@ -138,6 +138,9 @@ const OMP_LAUNCH_SPEC: AcpLaunchSpec = {
   args: ({ pluginDirs, model }) => [
     'acp',
     ...pluginDirs.flatMap((dir) => ['--plugin-dir', dir]),
+    ...(pluginDirs.length
+      ? ['--extension', join(pluginDirs[0], 'omp-native-chat.mjs')]
+      : []),
     ...(model ? ['--model', model] : [])
   ],
   // ACP takes listed provider/id values only; the CLI also resolves roles, fallbacks and :level.

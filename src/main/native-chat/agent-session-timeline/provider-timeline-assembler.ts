@@ -197,6 +197,7 @@ export function createProviderTimelineAssembler(
       case 'request.withdrawn':
       case 'request.subject':
       case 'context.usage':
+      case 'generation.usage':
       case 'provider.frame':
       case 'session.ended':
         return applyDecided(event, onPublished)

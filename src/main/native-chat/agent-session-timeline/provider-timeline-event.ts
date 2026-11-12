@@ -4,6 +4,7 @@
 // Each provider child gets a new generation; session.ended rejects all later events.
 
 import type { AgentSessionContextUsage } from '../../../shared/agent-session/conversation-context/agent-session-context-usage'
+import type { AgentSessionGenerationUsage } from '../../../shared/agent-session/agent-session-generation-usage'
 import type {
   AgentJournalApprovalItem,
   AgentJournalApprovalSubject,
@@ -100,6 +101,7 @@ export type ProviderTimelineEvent =
   | { type: 'request.subject'; request: string; subject: AgentJournalApprovalSubject }
   /** Use the named turn, otherwise open turn, otherwise last turn. */
   | ({ type: 'context.usage'; usage: AgentSessionContextUsage } & Joined)
+  | ({ type: 'generation.usage'; usage: AgentSessionGenerationUsage } & Joined)
   | { type: 'activity'; text: string | null }
   /** Unmodeled traffic uses the bounded fallback row. */
   | ({ type: 'provider.frame'; frameKind: string; payload: unknown } & Joined)

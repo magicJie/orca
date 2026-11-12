@@ -1,6 +1,10 @@
 // Durable host-clock lifecycle endpoints/provider durations keep settled timing identical on desktop/mobile without client clocks.
 
 import { agentJournalSubmissionKey } from '../journal/agent-session-journal-item-key'
+import {
+  agentSessionTokensPerSecond,
+  type AgentSessionGenerationUsage
+} from '../agent-session-generation-usage'
 import type {
   AgentJournalRenderItem,
   AgentJournalSubmission,
@@ -35,6 +39,7 @@ export type StructuredAgentTurnTiming = {
   observedAt: number
   /** The turn's verdict, the provider's or the host-observed end's; absent when unknown. */
   verdict?: AgentTurnOutcome
+  generationUsage?: AgentSessionGenerationUsage
 }
 
 function readTiming(
@@ -68,7 +73,8 @@ function readTiming(
     ...(end !== undefined ? { completedAt: end } : {}),
     ...(measured !== undefined ? { durationMs: measured } : {}),
     observedAt: item.observedAt,
-    ...(verdict ? { verdict } : {})
+    ...(verdict ? { verdict } : {}),
+    ...(turn.generationUsage ? { generationUsage: turn.generationUsage } : {})
   }
 }
 
@@ -181,6 +187,7 @@ function settledTurnsOf(
   const settled = new Map<string, NativeChatSettledTurn | null>()
   for (const [userItemId, timing] of turns.byAnchor) {
     const workedSeconds = completedStructuredAgentTurnSeconds(timing)
+    const tokensPerSecond = agentSessionTokensPerSecond(timing?.generationUsage)
     settled.set(
       userItemId,
       workedSeconds === null || timing === null
@@ -188,7 +195,8 @@ function settledTurnsOf(
         : {
             startedAt: timing.startedAt,
             workedSeconds,
-            ...(timing.verdict ? { verdict: timing.verdict } : {})
+            ...(timing.verdict ? { verdict: timing.verdict } : {}),
+            ...(tokensPerSecond !== null ? { tokensPerSecond } : {})
           }
     )
   }

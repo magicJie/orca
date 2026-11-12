@@ -240,6 +240,9 @@ export class AcpTimelineTranslator {
     if (extension?.usage) {
       events.push(...this.context.update(extension.usage, join))
     }
+    if (extension?.generationUsage && turn) {
+      events.push({ type: 'generation.usage', usage: extension.generationUsage, join })
+    }
     events.push(...this.threadGoal.update(extension?.threadGoal, join, at))
     if (settledCommand || this.prompts.absorbCompaction(owner.turn, extension, update)) {
       return events

@@ -53,6 +53,12 @@ type AcpListingConnect<C> = (
   options: AcpAgentConnectionOptions
 ) => C & ProviderAcquisitionConnection
 
+import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/native-chat-visuals-skill-location'
+import {
+  readOmpNativeChatOptions,
+  withOmpServiceTiers,
+  type OmpNativeChatOptions
+} from '../../omp/omp-native-chat-options'
 export type AcpModelCatalogProbeDeps = AcpLaunchInvocationDeps & {
   resolveSavedEnvironment?: () => Promise<Record<string, string>>
   probeVersion?: AgentCliVersionReader
@@ -136,9 +142,16 @@ export function createAcpModelCatalogProbe(
           await prepareAcpListingAccount(spec, env, antigravityChatAuth, () =>
             assertStructuredAgentResolutionCurrent(operation)
           )
+          const pluginDir =
+            spec.agent === 'omp'
+              ? ((await resolveNativeChatVisualsSkillLocation())?.pluginDir ?? null)
+              : null
           const launch = {
             command,
-            args: [...prefixArgs, ...spec.args({ fullAccess: false, pluginDirs: [] })],
+            args: [
+              ...prefixArgs,
+              ...spec.args({ fullAccess: false, pluginDirs: pluginDir ? [pluginDir] : [] })
+            ],
             cwd,
             // A shared tool process started by this listing keeps its environment for later chats.
             ...(spec.sharedToolProcess
@@ -177,14 +190,19 @@ export function createAcpModelCatalogProbe(
                   : null
               const sessionCwd = inPrivateFolder && folder ? folder.path : workspace
               const started: string[] = []
+              let tierReport: OmpNativeChatOptions | undefined
               try {
                 assertStructuredAgentResolutionCurrent(operation)
                 const args = [
                   ...prefixArgs,
-                  ...spec.args({ fullAccess: false, pluginDirs: [], model }),
+                  ...spec.args({
+                    fullAccess: false,
+                    pluginDirs: pluginDir ? [pluginDir] : [],
+                    model
+                  }),
                   ...(folderArgs && folder ? folderArgs(folder.path) : [])
                 ]
-                return await runAgentModelCatalogSession<
+                const result = await runAgentModelCatalogSession<
                   AcpModelCatalogSessionConnection,
                   Awaited<ReturnType<typeof readSessionModels>>
                 >(
@@ -192,7 +210,12 @@ export function createAcpModelCatalogProbe(
                     gate.retain(
                       (deps.connectSession ?? createAcpAgentConnection)(
                         { ...launch, args },
-                        connectionOptions
+                        {
+                          ...connectionOptions,
+                          onExtensionNotification: (method, params) => {
+                            tierReport = readOmpNativeChatOptions(method, params) ?? tierReport
+                          }
+                        }
                       )
                     ),
                   (connection, ready) =>
@@ -230,6 +253,7 @@ export function createAcpModelCatalogProbe(
                     ),
                   run
                 )
+                return { ...result, models: withOmpServiceTiers(result.models, tierReport) }
               } finally {
                 const accountHomePath = agentSessionAccountHomePath(accountHome)
                 if (accountHomePath) {
