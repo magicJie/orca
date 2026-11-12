@@ -53,7 +53,7 @@ type AcpListingConnect<C> = (
   options: AcpAgentConnectionOptions
 ) => C & ProviderAcquisitionConnection
 
-import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/native-chat-visuals-skill-location'
+import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/conversation-files/native-chat-visuals-skill-location'
 import {
   readOmpNativeChatOptions,
   withOmpServiceTiers,

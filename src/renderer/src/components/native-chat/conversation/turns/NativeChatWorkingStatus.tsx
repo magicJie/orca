@@ -7,6 +7,7 @@ import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { cn } from '@/lib/class-names'
 import {
   describeNativeChatTurnStatus,
+  formatNativeChatTurnRate,
   NATIVE_CHAT_TURN_STATUS_COPY
 } from '../../../../../../shared/native-chat/transcript/turns/native-chat-turn-status'
 import type { AgentTurnOutcome } from '../../../../../../shared/agent-status/lifecycle/agent-turn-outcome'
@@ -78,8 +79,9 @@ export function NativeChatWorkingStatus({
     elapsedSeconds,
     verdict
   })
-  const rate = tokensPerSecond == null ? '' : ` · ${tokensPerSecond.toFixed(1)} tok/s`
-  const label = (pendingLabel ?? turnStatusLabel(key, duration, t)) + rate
+  const label =
+    (pendingLabel ?? turnStatusLabel(key, duration, t)) +
+    formatNativeChatTurnRate(workedSeconds, tokensPerSecond)
   const detailsLabel = t(
     'components.native-chat.status.toggleDetails',
     NATIVE_CHAT_TURN_STATUS_COPY.toggleDetails

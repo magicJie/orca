@@ -2,6 +2,7 @@ import {
   antigravityChatAuthEnvironment,
   launchAntigravityChatAuth
 } from '../../antigravity/antigravity-chat-auth-environment'
+import { join } from 'node:path'
 import { checkAcpLaunchVersion } from './acp-launch-version'
 import type { McpServer } from '../generated/acp-protocol.generated'
 import { botToolsOffInstruction, withBotLaunchToolsEnv } from '../../bots/bot-launch-tools'
@@ -57,6 +58,7 @@ export function acpProcessEnvironment(
     ? withoutCallerIdentity(launch.env, launch.envToDelete)
     : { env: launch.env, envToDelete: launch.envToDelete }
 }
+import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/conversation-files/native-chat-visuals-skill-location'
 
 export type AcpStructuredLaunch = StructuredAgentCommand & {
   spec: AcpLaunchSpec
@@ -270,8 +272,19 @@ export function acpStructuredLaunchPart(
     // A load restores the conversation's own model, and a stale role there would stop the agent
     // before it opens; resumed chats apply their model through the session instead.
     const model = spec.launchesWithModel && !head ? record.options?.model : undefined
+    const extensionSkill =
+      spec.agent === 'omp'
+        ? (visuals?.skill ?? (await resolveNativeChatVisualsSkillLocation()))
+        : null
     const args = [
-      ...spec.args({ fullAccess, pluginDirs: skill?.pluginDirs ?? [], model }),
+      ...spec.args({
+        fullAccess,
+        pluginDirs: skill?.pluginDirs ?? [],
+        ...(extensionSkill
+          ? { extensionPath: join(extensionSkill.pluginDir, 'omp-native-chat.mjs') }
+          : {}),
+        model
+      }),
       ...(skill?.args ?? []),
       ...(instructions?.args ?? [])
     ]

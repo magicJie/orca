@@ -3,7 +3,10 @@ import { MobileNativeChatBotIdentityContext } from '../../mobile-native-chat-bot
 import { useContext, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { ChevronRight } from 'lucide-react-native'
-import { nativeChatElapsedSeconds } from '../../../../../../src/shared/native-chat/transcript/turns/native-chat-turn-status'
+import {
+  formatNativeChatTurnRate,
+  nativeChatElapsedSeconds
+} from '../../../../../../src/shared/native-chat/transcript/turns/native-chat-turn-status'
 import {
   formatMobileNativeChatTurnStatusLabel,
   nativeChatTurnStatusCopy
@@ -45,10 +48,10 @@ export function MobileNativeChatTurnStatus({
   const bot = useContext(MobileNativeChatBotIdentityContext)
   const settled = workedSeconds != null || Boolean(pendingLabel)
   const elapsedSeconds = useElapsedSeconds(startedAt, !settled)
-  const rate = tokensPerSecond == null ? '' : ` · ${tokensPerSecond.toFixed(1)} tok/s`
   const label =
     (pendingLabel ??
-      formatMobileNativeChatTurnStatusLabel({ workedSeconds, elapsedSeconds, verdict }, t)) + rate
+      formatMobileNativeChatTurnStatusLabel({ workedSeconds, elapsedSeconds, verdict }, t)) +
+    formatNativeChatTurnRate(workedSeconds, tokensPerSecond)
 
   const identity = bot ? (
     <View accessibilityRole="image" accessibilityLabel={bot.name}>
