@@ -50,7 +50,7 @@ import { usesModelSpecificAcpEfforts } from '../../../shared/agent-session/optio
 
 type AcpListingConnect<C> = (launch: ProviderProcessLaunch, options: AcpAgentConnectionOptions) => C
 
-import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/native-chat-visuals-skill-location'
+import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/conversation-files/native-chat-visuals-skill-location'
 import {
   readOmpNativeChatOptions,
   withOmpServiceTiers,

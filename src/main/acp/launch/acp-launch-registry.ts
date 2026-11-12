@@ -123,12 +123,10 @@ const OMP_LAUNCH_SPEC: AcpLaunchSpec = {
   agent: 'omp',
   command: 'omp',
   // Full access approves permission requests individually.
-  args: ({ pluginDirs, model }) => [
+  args: ({ pluginDirs, extensionPath, model }) => [
     'acp',
     ...pluginDirs.flatMap((dir) => ['--plugin-dir', dir]),
-    ...(pluginDirs.length
-      ? ['--extension', join(pluginDirs[0], 'omp-native-chat.mjs')]
-      : []),
+    ...(extensionPath ? ['--extension', extensionPath] : []),
     ...(model ? ['--model', model] : [])
   ],
   // ACP takes listed provider/id values only; the CLI also resolves roles, fallbacks and :level.
