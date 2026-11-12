@@ -1,4 +1,4 @@
-import type { AgentSessionProviderContextBoundary } from '../agent-session-provider-context'
+import type { AgentSessionProviderContextBoundary } from '../conversation-context/agent-session-provider-context'
 import type { AgentSessionForkedFromMark } from '../conversation-naming/agent-session-fork-name'
 import type {
   AgentJournalBoundedPayload,

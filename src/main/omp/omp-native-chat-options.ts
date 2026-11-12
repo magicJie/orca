@@ -1,5 +1,7 @@
 import { z } from 'zod'
-import type { AgentSessionModelOption } from '../../shared/agent-session/agent-session-wire'
+import type { AgentSessionModelOption } from '../../shared/agent-session/options/model-catalog/agent-session-model-option'
+import type { AgentSessionOptionsResult } from '../../shared/agent-session/options/protocol/agent-session-options-result'
+import type { AcpDialect } from '../acp/acp-dialects/acp-dialect'
 import type { AcpOptionWrite } from '../acp/options/acp-structured-options'
 
 const OmpNativeChatOptionsSchema = z.object({
@@ -44,17 +46,19 @@ export function withOmpServiceTiers(
   }))
 }
 
-export function ompServiceTierWrite(
-  report: OmpNativeChatOptions | undefined,
-  modelId: string | undefined,
+export function tierWrite(
+  key: string,
   value: string,
-  command: ((value: string) => string) | undefined
+  report: OmpNativeChatOptions | undefined,
+  current: Readonly<Record<string, string | undefined>>,
+  dialect: Pick<AcpDialect, 'serviceTierCommand'>
 ): AcpOptionWrite | null {
-  if (!report || !command) {
+  const command = dialect.serviceTierCommand
+  if (key !== 'serviceTier' || !report || !command) {
     return null
   }
   return report.models
-    .find((entry) => entry.id === modelId)
+    .find((entry) => entry.id === current.model)
     ?.serviceTiers.some((choice) => choice.value === value)
     ? { method: 'command', text: command(value) }
     : null
@@ -66,4 +70,33 @@ export function currentOmpServiceTier(
 ): { serviceTier?: string } {
   const value = report?.models.find((entry) => entry.id === modelId)?.serviceTier
   return value ? { serviceTier: value } : {}
+}
+
+export function withOmpServiceTierOptionResult(
+  models: AgentSessionModelOption[],
+  report: OmpNativeChatOptions | undefined,
+  forkSupport: AgentSessionOptionsResult['forkSupport'],
+  modelId: string | undefined,
+  effort: string | undefined
+): Pick<AgentSessionOptionsResult, 'models' | 'current' | 'forkSupport'> {
+  const current = {
+    ...(modelId ? { model: modelId } : {}),
+    ...(effort !== undefined ? { effort } : {}),
+    ...currentOmpServiceTier(report, modelId)
+  }
+  return {
+    models: withOmpServiceTiers(models, report),
+    forkSupport,
+    current: { ...current, confirmed: Object.keys(current) }
+  }
+}
+
+export function reportedOmpNativeChatOptions(
+  current: AgentSessionOptionsResult['current']
+): Readonly<Record<string, string>> {
+  return {
+    ...(current.model ? { model: current.model } : {}),
+    ...(current.effort ? { effort: current.effort } : {}),
+    ...(current.serviceTier ? { serviceTier: current.serviceTier } : {})
+  }
 }

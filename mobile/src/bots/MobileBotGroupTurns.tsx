@@ -1,4 +1,5 @@
 import { useMobileTranslation } from '../i18n/use-mobile-translation'
+import { agentSessionTokensPerSecond } from '../../../src/shared/agent-session/agent-session-generation-usage'
 import { memo, useEffect, useMemo, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { folderWorkspaceKey } from '../../../src/shared/workspace/identity/workspace-scope'
@@ -201,6 +202,11 @@ export function MobileBotGroupTurn({
                     startedAt={clock?.startedAt ?? null}
                     workedSeconds={clock && working ? null : (clock?.durationMs ?? 0) / 1000}
                     verdict={clock?.outcome}
+                    tokensPerSecond={
+                      turn.revoked && clock?.state !== 'completed'
+                        ? null
+                        : agentSessionTokensPerSecond(clock?.generationUsage)
+                    }
                     expanded={expanded}
                     onToggleExpanded={clock ? () => setExpanded(!expanded) : undefined}
                   />

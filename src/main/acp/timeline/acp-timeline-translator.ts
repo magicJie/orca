@@ -19,7 +19,11 @@ import { acpTurnEndEvents, AcpPromptTurns } from './acp-prompt-turns'
 
 import { translateAcpRequest } from '../requests/acp-timeline-requests'
 import { AcpUrlElicitations } from '../requests/acp-url-elicitation'
-import { ACP_SUBSTANTIVE_UPDATES, acpSessionUpdate } from './acp-session-update'
+import { acpSessionUpdate } from './acp-session-update'
+import {
+  acpTimelineExtensionEvents,
+  acpTimelineTurnResolution
+} from './acp-timeline-notification-parts'
 import { AcpSubagents } from './acp-subagents'
 import { AcpChildSessions } from './acp-child-sessions'
 import { AcpTimelineOwnership } from './acp-timeline-ownership'
@@ -46,7 +50,7 @@ export class AcpTimelineTranslator {
   /** Drained by the lane in journal order. */
   readonly subagents = new AcpSubagents()
   readonly children: AcpChildSessions
-  protected readonly ownership: AcpTimelineOwnership
+  protected readonly ownership = new AcpTimelineOwnership()
   private readonly started = new BoundedMap<string, true>({ maxEntries: 128 })
   readonly elicitations = new AcpUrlElicitations()
   readonly failures: AcpTurnFailures
@@ -57,7 +61,6 @@ export class AcpTimelineTranslator {
   private readonly agentTurns: AcpAgentTurns
 
   constructor(private readonly options: AcpTimelineTranslatorOptions) {
-    this.ownership = new AcpTimelineOwnership()
     this.dialect = options.dialect ?? GENERIC_ACP_DIALECT
     this.providerSessionId = options.sessionId
     this.injectsPromptIdentity = this.dialect.injectedPromptIdentity === true
@@ -204,20 +207,15 @@ export class AcpTimelineTranslator {
     if (markedReplay || (extension?.replay === undefined && this.loading)) {
       return this.context.history(update, extension?.usage, at, { thread: this.options.sessionId })
     }
-    const providerTurn = extension?.turn
-    const opens =
-      (update !== undefined && ACP_SUBSTANTIVE_UPDATES.includes(update.sessionUpdate)) ||
-      extension?.end !== undefined ||
-      extension?.started === true
-    const offeredTurn = providerTurn ?? open ?? this.agentTurns.mint(opens, at, update)
-    const operation = this.ownership.operation()
-    const owner = update
-      ? this.ownership.messages.owner(offeredTurn, update, operation.settled)
-      : { turn: offeredTurn }
-    // Host command IDs cannot join provider-keyed turns, even when their late frames outlive `last`.
-    const settledCommand =
-      owner.turn?.startsWith('compact:') === true && this.prompts.current?.turn !== owner.turn
-    const turn = this.prompts.compacting(owner.turn) || settledCommand ? undefined : owner.turn
+    const { opens, operation, owner, settledCommand, turn } = acpTimelineTurnResolution(
+      extension,
+      update,
+      open,
+      this.ownership,
+      this.prompts,
+      this.agentTurns,
+      at
+    )
     const drop = this.ownership.messages.rejection(update, owner, this.options.sessionId, turn)
     if (drop) {
       this.ownership.messages.observe(owner.turn, update)
@@ -230,19 +228,17 @@ export class AcpTimelineTranslator {
     }
     this.ownership.messages.observe(owner.turn, update)
     const join = { thread: this.options.sessionId, ...(turn === undefined ? {} : { turn }) }
-    if (extension?.backgroundTasks) {
-      const tasks = extension.backgroundTasks.filter((task) => !this.subagents.has(task.taskId))
-      events.push(...this.backgroundTasks.translate(tasks, join))
-    }
-    if (extension?.subagents) {
-      events.push(...this.subagents.translate(extension.subagents, join, at))
-    }
-    if (extension?.usage) {
-      events.push(...this.context.update(extension.usage, join))
-    }
-    if (extension?.generationUsage && turn) {
-      events.push({ type: 'generation.usage', usage: extension.generationUsage, join })
-    }
+    events.push(
+      ...acpTimelineExtensionEvents(
+        extension,
+        turn,
+        join,
+        at,
+        this.context,
+        this.backgroundTasks,
+        this.subagents
+      )
+    )
     events.push(...this.threadGoal.update(extension?.threadGoal, join, at))
     if (settledCommand || this.prompts.absorbCompaction(owner.turn, extension, update)) {
       return events

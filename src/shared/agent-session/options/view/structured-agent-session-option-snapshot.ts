@@ -161,22 +161,17 @@ function drawnModelControls(state: StructuredAgentSessionOptionState) {
     model: record.values.model
   })
   const shown = structuredAgentSessionShownModel(catalog, models, record)
+  const descriptionSource = { catalog, verifiedModelIds: state.verifiedModelIds }
   // A listed row describes the chat's model by id or resolved name; stand-ins keep their own options.
   const controls = shown.controlsModelId
-    ? (structuredAgentSessionDescribedModel(
-        { catalog, verifiedModelIds: state.verifiedModelIds },
-        shown.controlsModelId
-      )?.options ??
+    ? (structuredAgentSessionDescribedModel(descriptionSource, shown.controlsModelId)?.options ??
       models.find((model) => model.id === shown.controlsModelId)?.options ??
       [])
     : modellessControls(catalog, record)
   // Normalize only under the named model’s listed controls; stand-ins/unlisted models preserve host values.
   const normalises =
     shown.shown.currentId !== null &&
-    structuredAgentSessionDescribedModel(
-      { catalog, verifiedModelIds: state.verifiedModelIds },
-      shown.shown.currentId
-    ) !== undefined
+    structuredAgentSessionDescribedModel(descriptionSource, shown.shown.currentId) !== undefined
   let values = normalises
     ? valuesUnderControls(catalog, controls, record.values, state.olderHost === true)
     : record.values

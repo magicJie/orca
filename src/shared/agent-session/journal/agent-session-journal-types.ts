@@ -1,13 +1,11 @@
 import type { AgentJournalBotMessageFields } from './agent-journal-bot-message-fields'
 import type { AgentJournalTypedBy } from './agent-journal-typed-by'
-import type { AgentSessionForkedFromMark } from '../conversation-naming/agent-session-fork-name'
 import type {
   AgentJournalApprovalMatchedAskRule,
   AgentJournalApprovalSubject
 } from './agent-session-journal-approval-subject'
 import type { AgentJournalCursor, AgentJournalItemIdentity } from './agent-session-journal-identity'
 import type { AgentJournalTurnScope } from './agent-session-journal-turn-scope'
-import type { AgentSessionProviderContextBoundary } from '../conversation-context/agent-session-provider-context'
 import type { AgentJournalStatusItemFields } from './agent-session-journal-status'
 import type { AgentSessionGenerationUsage } from '../agent-session-generation-usage'
 // Persist/republish plain JSON only. Append-only rows are upcast on read, never rewritten;

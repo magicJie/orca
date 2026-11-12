@@ -252,14 +252,7 @@ export class AcpStructuredOptions {
       const native = acpInteractionModeValue(this.dialect.interactionModes, option, value)
       return option && native ? { method: 'config', configId: option.id, value: native } : null
     }
-    return key === 'serviceTier'
-      ? Omp.ompServiceTierWrite(
-          this.serviceTiers,
-          this.currentValues().model,
-          value,
-          this.dialect.serviceTierCommand
-        )
-      : null
+    return Omp.tierWrite(key, value, this.serviceTiers, this.currentValues(), this.dialect)
   }
 
   /** Unrunnable Plan is refused, unrunnable Build skipped; only Orca's confirmed write proves the mode. */
@@ -286,17 +279,16 @@ export class AcpStructuredOptions {
       state: this.models,
       currentModel
     })
-    const current = {
-      ...(currentModel ? { model: currentModel } : {}),
-      ...(effortOption ? { effort: effortOption.currentValue } : {}),
-      ...Omp.currentOmpServiceTier(this.serviceTiers, currentModel)
-    }
-    const menu = {
-      models: Omp.withOmpServiceTiers(models, this.serviceTiers),
-      forkSupport: this.forkSupport,
-      current: { ...current, confirmed: Object.keys(current) }
-    }
-    return withFastModeOption(menu, this.idSelect(this.dialect.fastConfigId))
+    return withFastModeOption(
+      Omp.withOmpServiceTierOptionResult(
+        models,
+        this.serviceTiers,
+        this.forkSupport,
+        currentModel,
+        effortOption?.currentValue
+      ),
+      this.idSelect(this.dialect.fastConfigId)
+    )
   }
 
   /** Unpicked new-session default: null if unlisted, undefined if the session cannot establish it. */
@@ -315,12 +307,7 @@ export class AcpStructuredOptions {
   }
 
   reported(): Readonly<Record<string, string>> {
-    const { current } = this.read()
-    return {
-      ...(current.model ? { model: current.model } : {}),
-      ...(current.effort ? { effort: current.effort } : {}),
-      ...(current.serviceTier ? { serviceTier: current.serviceTier } : {})
-    }
+    return Omp.reportedOmpNativeChatOptions(this.read().current)
   }
 
   observedCurrent(values?: Readonly<Partial<Record<string, string>>>) {
@@ -358,7 +345,7 @@ export class AcpStructuredOptions {
 
   private idSelect(id: string | undefined): SelectOption | null {
     const option = id ? this.configOptions.find((entry) => entry.id === id) : undefined
-    return option && isSelect(option) ? option : null
+    return option?.type === 'select' ? option : null
   }
 
   private select(category: string): SelectOption | null {

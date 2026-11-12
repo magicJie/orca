@@ -35,6 +35,7 @@ import type { AcpStructuredSessionAdapterDeps } from './acp-structured-session-a
 import type { AcpStructuredTurnsDeps } from '../turns/acp-turn-dispatch-contract'
 import { createStructuredAgentSessionLogger } from '../../native-chat/agent-session-wire/host/structured-agent-session-logger'
 import { readOmpNativeChatOptions } from '../../omp/omp-native-chat-options'
+import { adoptOmpNativeChatOptionsReport } from './acp-omp-native-chat-options-report'
 import { reportAcpSessionOptions } from '../options/acp-live-options'
 
 const MAX_EARLY_FRAMES = 2_048
@@ -117,10 +118,7 @@ export async function acquireAcpStructuredSession(input: {
         whenLane(() => {
           const report = spec.agent === 'omp' ? readOmpNativeChatOptions(method, params) : undefined
           if (report) {
-            options.adoptServiceTiers(report)
-            if (isAcpReadySession(session) && !session.ended) {
-              reportAcpSessionOptions(deps.onEvent, session)
-            }
+            adoptOmpNativeChatOptionsReport(report, options, session, deps.onEvent)
             return
           }
           if (slot.reattaching) {

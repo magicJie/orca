@@ -22,7 +22,6 @@ import type { AntigravityChatAuthConfig } from '../../../shared/agent-accounts/a
 import type { GlobalSettings } from '../../../shared/settings/global-settings-types'
 import { prepareAntigravityAcpProxyEnvironment } from '../../antigravity/antigravity-acp-proxy-environment'
 import { agentSessionProviderHandleChainHead } from '../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle'
-import { agentSessionProviderHandleKey } from '../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
 import type { AgentSessionAccountHome } from '../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import type { resolveCliCommand } from '../../../shared/shell/command-resolution/node-cli-command-resolution'
 import type { AgentCliVersionReader } from '../../agent-launch/preflight/agent-cli-version-probe'
@@ -35,10 +34,8 @@ import {
 } from '../../native-chat/conversation-files/native-chat-visuals-delivery'
 import type { AcpLaunchSpec } from './acp-launch-contract'
 import { acpLaunchSpecForAccount, resolveAcpLaunchCommand } from './acp-launch-command'
-import {
-  nothingExchangedOn,
-  type SavedProviderTurnReads
-} from '../../native-chat/agent-session-journal/journal-provider-turn-saved'
+import type { SavedProviderTurnReads } from '../../native-chat/agent-session-journal/journal-provider-turn-saved'
+import { acpStructuredLaunchResume } from './acp-structured-launch-resume'
 import {
   childEnvironmentView,
   loadAcpSkillRoots,
@@ -49,6 +46,7 @@ import { noteManagedServerUse } from '../../node-runtime/managed-runtime-release
 import type { AcpInstructionsLaunch } from './acp-instructions'
 import { acpInstructionsWithVisuals, visualsByInstructions } from './acp-visuals-instructions'
 import { withoutCallerIdentity } from '../../runtime/agent-session/environment/structured-session-child-env'
+import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/conversation-files/native-chat-visuals-skill-location'
 
 /** The environment a launch's process gets; see `AcpLaunchSpec.sharedToolProcess`. */
 export function acpProcessEnvironment(
@@ -58,7 +56,6 @@ export function acpProcessEnvironment(
     ? withoutCallerIdentity(launch.env, launch.envToDelete)
     : { env: launch.env, envToDelete: launch.envToDelete }
 }
-import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/conversation-files/native-chat-visuals-skill-location'
 
 export type AcpStructuredLaunch = StructuredAgentCommand & {
   spec: AcpLaunchSpec
@@ -311,22 +308,12 @@ export function acpStructuredLaunchPart(
         ...(mcpServers.length > 0 ? { mcpServers } : {}),
         ...(model ? { launchModel: model } : {}),
         ...(launchedVersion ? { version: launchedVersion } : {}),
-        resume: head
-          ? {
-              sessionId: head.handle.nativeId,
-              key: agentSessionProviderHandleKey(head.handle),
-              mayBeUnsaved: async () =>
-                head.origin === 'created' &&
-                (await nothingExchangedOn(
-                  deps.savedSession,
-                  identity.sessionId,
-                  head.handle.nativeId
-                )),
-              lossKeys: record.providerHandleChain.flatMap((link) =>
-                link.replaces?.reason === 'restore-failed' ? [link.replaces.key] : []
-              )
-            }
-          : null
+        resume: acpStructuredLaunchResume(
+          head,
+          record.providerHandleChain,
+          deps.savedSession,
+          identity.sessionId
+        )
       },
       env: withNativeChatVisualsEnv(
         withBotLaunchToolsEnv({ ...env, ...skill?.env, ...instructions?.env }, tools),
