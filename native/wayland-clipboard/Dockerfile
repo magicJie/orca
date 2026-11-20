@@ -1,8 +1,8 @@
 FROM ubuntu:20.04
 ARG TARGETARCH
 RUN sed -i -E \
-    -e 's#http://(archive|security)\.ubuntu\.com/ubuntu#https://mirrors.tuna.tsinghua.edu.cn/ubuntu#g' \
-    -e 's#http://ports\.ubuntu\.com/ubuntu-ports#https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports#g' \
+    -e 's#http://(archive|security)\.ubuntu\.com/ubuntu#http://mirrors.tuna.tsinghua.edu.cn/ubuntu#g' \
+    -e 's#http://ports\.ubuntu\.com/ubuntu-ports#http://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports#g' \
     /etc/apt/sources.list \
     && printf 'Acquire::Retries "2";\nAcquire::http::Timeout "15";\n' > /etc/apt/apt.conf.d/99-orca-mirror \
     && apt-get update \
