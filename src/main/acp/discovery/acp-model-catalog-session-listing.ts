@@ -52,7 +52,6 @@ export function acpSessionModelListing(input: {
   workspace: string
   accountHome: AgentSessionAccountHome
   pluginDirs: readonly string[]
-  extensionPath: string | undefined
   connectionOptions: AcpAgentConnectionOptions
   operation: StructuredAgentResolutionOperation | undefined
   selectedModels?: readonly string[]
@@ -61,7 +60,7 @@ export function acpSessionModelListing(input: {
   retain: <C extends ProviderAcquisitionConnection>(connection: C) => C
 }): (model: string | undefined) => Promise<AcpSessionListingResult> {
   const { spec, listing, deps, launch, prefixArgs, workspace, accountHome } = input
-  const { pluginDirs, extensionPath, connectionOptions, operation, publish, run } = input
+  const { pluginDirs, connectionOptions, operation, publish, run } = input
   const folderArgs = listing.sessionFolderArgs
   // Without a chat's folder, the account's models list in an empty private one.
   const inPrivateFolder = listing.inPrivateFolder || !workspace
@@ -77,7 +76,7 @@ export function acpSessionModelListing(input: {
       assertStructuredAgentResolutionCurrent(operation)
       const args = [
         ...prefixArgs,
-        ...spec.args({ fullAccess: false, pluginDirs, extensionPath, model }),
+        ...spec.args({ fullAccess: false, pluginDirs, model }),
         ...(folderArgs && folder ? folderArgs(folder.path) : [])
       ]
       const result = await runAgentModelCatalogSession<

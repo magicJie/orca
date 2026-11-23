@@ -1,17 +1,86 @@
 import { afterEach, expect, it } from 'vitest'
 import { OMP_ACP_DIALECT } from '../acp-dialects/omp-dialect'
 import { AcpTimelineTranslator } from './acp-timeline-translator'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
-  closeProviderTimelineRigs,
-  openProviderTimelineRig
-} from '../../native-chat/agent-session-timeline/provider-timeline-assembler-test-support'
+  closeTestJournalHostDatabase,
+  createTrackedJournalOpener,
+  type TestJournalOptions
+} from '../../native-chat/agent-session-journal/store-lifecycle/journal-host-database-test-support'
+import { createDeferredStructuredAgentSessionEventSink } from '../../native-chat/agent-session-wire/journal-ingress/structured-agent-session-event-sink'
+import { testEventSinkLogging } from '../../native-chat/agent-session-wire/host/testing/structured-agent-session-logger.test-fixture'
+import { createProviderTimelineAssembler } from '../../native-chat/agent-session-timeline/provider-timeline-assembler'
+import { providerTimelineSink } from '../../native-chat/agent-session-timeline/provider-timeline-plan'
 import { readTestJournalItems } from '../../native-chat/agent-session-journal/journal-observation.test-support'
 import { selectStructuredAgentSettledTurns } from '../../../shared/agent-session/view/structured-agent-session-turn-timing'
 
-afterEach(closeProviderTimelineRigs)
+const journals = createTrackedJournalOpener()
+const cleanups: (() => void)[] = []
+const roots: string[] = []
+
+afterEach(async () => {
+  cleanups.splice(0).forEach((cleanup) => cleanup())
+  await journals.closeAll()
+  for (const root of roots.splice(0)) {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+async function openProviderTimelineRig() {
+  const root = await mkdtemp(join(tmpdir(), 'orca-omp-generation-'))
+  roots.push(root)
+  const options: TestJournalOptions = {
+    identity: {
+      sessionId: 'omp-session',
+      workspaceId: 'workspace-1',
+      hostId: 'local',
+      agent: 'omp',
+      providerHandle: { transport: 'acp', agent: 'omp', nativeId: 'omp-session' }
+    },
+    stateDirectory: root,
+    now: () => 1_000
+  }
+  let journal = await journals.open(options)
+  const deferred = createDeferredStructuredAgentSessionEventSink(testEventSinkLogging())
+  deferred.bind({ journal, fence: 1, publish: () => {} })
+  const sink = providerTimelineSink(deferred.sink)
+  if (!sink) {
+    throw new Error('Expected provider timeline sink')
+  }
+  const assembler = createProviderTimelineAssembler({
+    sink,
+    sessionId: options.identity.sessionId,
+    agent: 'omp',
+    generation: 'gen-1',
+    namespace: 'omp-session'
+  })
+  cleanups.push(() => {
+    assembler.dispose()
+    deferred.close()
+  })
+  const rows = async () => {
+    assembler.flush()
+    expect(await deferred.drained()).toEqual({ ok: true })
+    return readTestJournalItems(journal)
+  }
+  return {
+    assembler,
+    rows,
+    reopenJournal: async () => {
+      await rows()
+      deferred.close()
+      await journal.close()
+      await closeTestJournalHostDatabase(root)
+      journal = await journals.open(options)
+      return journal
+    }
+  }
+}
 
 it('retains provider-token throughput across settlement and reload without counting tool time', async () => {
-  const rig = await openProviderTimelineRig({ agent: 'omp' })
+  const rig = await openProviderTimelineRig()
   const translator = new AcpTimelineTranslator({
     sessionId: 'omp-session',
     dialect: OMP_ACP_DIALECT
@@ -36,7 +105,7 @@ it('retains provider-token throughput across settlement and reload without count
 })
 
 it('leaves an unmeasured response unavailable rather than timing replayed text', async () => {
-  const rig = await openProviderTimelineRig({ agent: 'omp' })
+  const rig = await openProviderTimelineRig()
   const translator = new AcpTimelineTranslator({
     sessionId: 'omp-session',
     dialect: OMP_ACP_DIALECT

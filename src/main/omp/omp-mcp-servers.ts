@@ -1,11 +1,10 @@
 // OMP's ACP mode skips its own MCP config and connects only the servers the client sends, so a chat
 // sends the ones its native mcp.json files define, read as OMP's terminal reads them.
 import { readFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { parse as parseYaml } from 'yaml'
 import { hasReachedAppVersion } from '../../shared/app-lifecycle/identity/app-version'
-import { normalizedOmpProfile } from '../../shared/agent-launch/startup/omp-profile'
+import { ompAgentDir } from './omp-agent-dir'
 import type { McpServer } from '../acp/generated/acp-protocol.generated'
 import type { AcpOwnMcpServersLoader } from '../acp/launch/acp-launch-contract'
 import { acpMcpServer, type AcpMcpServerSource } from '../acp/launch/acp-mcp-server'
@@ -51,20 +50,6 @@ async function readOmpSettings(agentDir: string): Promise<Record<string, unknown
     }
   }
   return {}
-}
-
-/** OMP takes a named profile's folder, under its own home, over PI_CODING_AGENT_DIR. */
-function ompAgentDir(env: Readonly<Record<string, string>>): string | undefined {
-  const profile = normalizedOmpProfile(env.OMP_PROFILE ?? env.PI_PROFILE)
-  return profile
-    ? join(
-        (process.platform === 'win32' ? env.USERPROFILE : env.HOME) || homedir(),
-        env.PI_CONFIG_DIR || '.omp',
-        'profiles',
-        profile,
-        'agent'
-      )
-    : env.PI_CODING_AGENT_DIR
 }
 
 /** OMP's string forms of `enabled`; anything else counts as unset. */

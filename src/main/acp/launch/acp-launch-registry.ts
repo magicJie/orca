@@ -135,10 +135,9 @@ const OMP_LAUNCH_SPEC: AcpLaunchSpec = {
   agent: 'omp',
   command: 'omp',
   // Full access approves permission requests individually.
-  args: ({ pluginDirs, extensionPath, model }) => [
+  args: ({ pluginDirs, model }) => [
     'acp',
     ...pluginDirs.flatMap((dir) => ['--plugin-dir', dir]),
-    ...(extensionPath ? ['--extension', extensionPath] : []),
     ...(model ? ['--model', model] : [])
   ],
   // ACP takes listed provider/id values only; the CLI also resolves roles, fallbacks and :level.

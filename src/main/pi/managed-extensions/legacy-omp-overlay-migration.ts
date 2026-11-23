@@ -2,6 +2,8 @@ import { cpSync, lstatSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } 
 import type { Dirent, Stats } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { ORCA_PI_AGENT_STATUS_EXTENSION_FILE } from './agent-status/agent-status-extension-source'
+import { ORCA_OMP_NATIVE_CHAT_EXTENSION_FILE } from './omp-native-chat-extension-source'
+import { ORCA_OMP_NATIVE_CHAT_NOTIFY_FILE } from './omp-native-chat-notify-source'
 import { ORCA_PI_PREFILL_EXTENSION_FILE } from './prefill-extension-source'
 import { ORCA_PI_EXTENSION_FILE } from './titlebar-extension-source'
 import { isSafeDescendCandidate } from '../../pty/scrollback/overlay-mirror'
@@ -14,7 +16,9 @@ const SQLITE_SIDECAR_SUFFIXES = ['-wal', '-shm', '-journal'] as const
 const MANAGED_EXTENSION_FILES = new Set([
   ORCA_PI_EXTENSION_FILE,
   ORCA_PI_PREFILL_EXTENSION_FILE,
-  ORCA_PI_AGENT_STATUS_EXTENSION_FILE
+  ORCA_PI_AGENT_STATUS_EXTENSION_FILE,
+  ORCA_OMP_NATIVE_CHAT_EXTENSION_FILE,
+  ORCA_OMP_NATIVE_CHAT_NOTIFY_FILE
 ])
 
 type DeferredSidecar = {

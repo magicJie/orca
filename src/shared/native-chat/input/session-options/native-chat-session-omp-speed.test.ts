@@ -47,8 +47,8 @@ describe('OMP native speed choices', () => {
     expect(loneFastTier(tiers?.tiers ?? [])).toBeUndefined()
     expect(nativeChatOptionValuesLabel([none], say)).toBe('')
     expect(nativeChatOptionValuesLabel([ompSpeed('default')], say)).toBe('Default')
-    expect(nativeChatSessionChoiceLabel({ value: 'default', label: 'Default' }, say, 'serviceTier')).toBe(
-      'Default'
-    )
+    expect(
+      nativeChatSessionChoiceLabel({ value: 'default', label: 'Default' }, say, 'serviceTier')
+    ).toBe('Default')
   })
 })

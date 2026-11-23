@@ -9,6 +9,14 @@ import {
   getPiAgentStatusExtensionSource
 } from './agent-status/agent-status-extension-source'
 import {
+  ORCA_OMP_NATIVE_CHAT_EXTENSION_FILE,
+  getOmpNativeChatExtensionSource
+} from './omp-native-chat-extension-source'
+import {
+  ORCA_OMP_NATIVE_CHAT_NOTIFY_FILE,
+  getOmpNativeChatNotifySource
+} from './omp-native-chat-notify-source'
+import {
   ORCA_PI_PREFILL_EXTENSION_FILE,
   getPiPrefillExtensionSource
 } from './prefill-extension-source'
@@ -136,6 +144,16 @@ export class PiTitlebarExtensionService {
       this.writeManagedExtension(
         join(extensionsDir, ORCA_PI_PREFILL_EXTENSION_FILE),
         withOrcaManagedExtensionMarker(getPiPrefillExtensionSource(kind))
+      )
+    }
+    if (kind === 'omp') {
+      this.writeManagedExtension(
+        join(extensionsDir, ORCA_OMP_NATIVE_CHAT_EXTENSION_FILE),
+        withOrcaManagedExtensionMarker(getOmpNativeChatExtensionSource(kind))
+      )
+      this.writeManagedExtension(
+        join(extensionsDir, ORCA_OMP_NATIVE_CHAT_NOTIFY_FILE),
+        withOrcaManagedExtensionMarker(getOmpNativeChatNotifySource(kind))
       )
     }
     const statusExtensionPath = join(extensionsDir, ORCA_PI_AGENT_STATUS_EXTENSION_FILE)

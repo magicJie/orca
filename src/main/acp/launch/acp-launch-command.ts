@@ -26,6 +26,8 @@ import type {
   AcpLaunchSpec
 } from './acp-launch-contract'
 
+import { installOmpManagedExtensions } from '../../omp/omp-agent-dir'
+
 /** Prefer explicit commands, then managed releases, then complete pinned copies on PATH. */
 export function resolveAcpLaunchCommand(
   spec: AcpLaunchSpec,
@@ -55,18 +57,28 @@ export function resolveAcpLaunchCommand(
       }
     )
   const { managedRuntime } = spec
+  let resolved: StructuredAgentCommand & { version?: string }
   if (!managedRuntime || hasExplicitTuiLaunchCommand(settings, spec.agent)) {
-    return resolve(pathEnv)
+    resolved = resolve(pathEnv)
+  } else {
+    const pin = managedRuntime.pin()
+    const root = options.dataDirectory && managedRuntime.root(options.dataDirectory)
+    const release = root ? resolveInstalledRuntimeRelease(root, pin).release : null
+    if (release) {
+      resolved = { ...resolve(release.folder), version: release.version }
+    } else {
+      const { command } = resolve(pathEnv)
+      const pinned = command !== spec.command && copyBesidePinnedMembers(command, pin)
+      resolved = { command: pinned || spec.command, prefixArgs: [] }
+    }
   }
-  const pin = managedRuntime.pin()
-  const root = options.dataDirectory && managedRuntime.root(options.dataDirectory)
-  const release = root ? resolveInstalledRuntimeRelease(root, pin).release : null
-  if (release) {
-    return { ...resolve(release.folder), version: release.version }
+  // Managed extensions carry the OMP chat extras the removed --extension pipeline delivered; every
+  // ACP OMP spawn (chat, model probe, at-rest commands) resolves its command through here. Install
+  // after resolution: a Command override's --profile beats the environment for the agent dir.
+  if (spec.agent === 'omp') {
+    installOmpManagedExtensions(env, resolved.prefixArgs)
   }
-  const { command } = resolve(pathEnv)
-  const pinned = command !== spec.command && copyBesidePinnedMembers(command, pin)
-  return { command: pinned || spec.command, prefixArgs: [] }
+  return resolved
 }
 
 /** Chats whose account home a host backend pins launch with its spec. */

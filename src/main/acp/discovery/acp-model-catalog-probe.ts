@@ -5,7 +5,6 @@ import {
   type StructuredAgentResolutionOperation
 } from '../../native-chat/agent-launch/structured-agent-command-resolution'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
 import type { AgentCliVersionReader } from '../../agent-launch/preflight/agent-cli-version-probe'
 import type {
   AgentModelCatalogProgress,
@@ -44,7 +43,6 @@ import { AcpAgentExitedError } from '../transport/acp-errors'
 import { signedOutAsUnavailable } from './acp-listing-signed-out'
 import { sealSharedToolProcessChild } from '../../runtime/agent-session/environment/structured-session-child-env'
 import { usesModelSpecificAcpEfforts } from '../../../shared/agent-session/options/model-catalog/agent-model-catalog-ownership'
-import { resolveNativeChatVisualsSkillLocation } from '../../native-chat/conversation-files/native-chat-visuals-skill-location'
 
 type AcpListingConnect<C> = (
   launch: ProviderProcessLaunch,
@@ -134,17 +132,9 @@ export function createAcpModelCatalogProbe(
           await prepareAcpListingAccount(spec, env, antigravityChatAuth, () =>
             assertStructuredAgentResolutionCurrent(operation)
           )
-          const pluginDir =
-            spec.agent === 'omp'
-              ? ((await resolveNativeChatVisualsSkillLocation())?.pluginDir ?? null)
-              : null
-          const extensionPath = pluginDir ? join(pluginDir, 'omp-native-chat.mjs') : undefined
           const launch = {
             command,
-            args: [
-              ...prefixArgs,
-              ...spec.args({ fullAccess: false, pluginDirs: pluginDir ? [pluginDir] : [] })
-            ],
+            args: [...prefixArgs, ...spec.args({ fullAccess: false, pluginDirs: [] })],
             cwd,
             // A shared tool process started by this listing keeps its environment for later chats.
             ...(spec.sharedToolProcess
@@ -180,8 +170,7 @@ export function createAcpModelCatalogProbe(
               prefixArgs,
               workspace,
               accountHome,
-              pluginDirs: pluginDir ? [pluginDir] : [],
-              extensionPath,
+              pluginDirs: [],
               connectionOptions,
               operation,
               selectedModels: options?.selectedModels,
